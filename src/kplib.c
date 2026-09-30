@@ -60,6 +60,14 @@ static unsigned short SSWAPIL (unsigned short a) { return((a>>8)+(a<<8)); }
 #if !defined(_WIN32) && !defined(__DOS__)
 #include <unistd.h>
 #include <dirent.h>
+#ifdef VITA
+#include <psp2/io/stat.h>
+#define KZ_ISDIR(entry) SCE_S_ISDIR((entry)->d_stat.st_mode)
+#define KZ_ISFILE(entry) (SCE_S_ISREG((entry)->d_stat.st_mode) || SCE_S_ISLNK((entry)->d_stat.st_mode))
+#else
+#define KZ_ISDIR(entry) ((entry)->d_type == DT_DIR)
+#define KZ_ISFILE(entry) ((entry)->d_type == DT_REG || (entry)->d_type == DT_LNK)
+#endif
 typedef long long __int64;
 static __inline int _lrotl (int i, int sh)
 	{ return((i>>(-sh))|(i<<sh)); }
@@ -3005,14 +3013,14 @@ int kzfindfile (char *filnam)
 			if ((findata = readdir(hfind)) == NULL)
 				{ closedir(hfind); hfind = NULL; if (!kzhashbuf) return 0; srchstat = kzlastfnam; break; }
 			i = wildstpathleng;
-			if (findata->d_type == DT_DIR)
+			if (KZ_ISDIR(findata))
 				{ if (findata->d_name[0] == '.' && !findata->d_name[1]) continue; } //skip .
-			else if ((findata->d_type == DT_REG) || (findata->d_type == DT_LNK))
+			else if (KZ_ISFILE(findata))
 				{ if (findata->d_name[0] == '.') continue; } //skip hidden (dot) files
 			else continue; //skip devices and fifos and such
 			if (!wildmatch(findata->d_name,&wildst[wildstpathleng])) continue;
 			strcpy(&filnam[i],findata->d_name);
-			if (findata->d_type == DT_DIR) strcat(&filnam[i],"/");
+			if (KZ_ISDIR(findata)) strcat(&filnam[i],"/");
 #endif
 			return(1);
 		}
